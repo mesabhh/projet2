@@ -40,6 +40,8 @@ export const googleProvider = new GoogleAuthProvider();
 export const githubProvider = new GithubAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
 export const rtdb = getDatabase(app);
+// Alias used by some components
+export const db = firestore;
 
 // --- Example Export ---
 export const initPresenceWatcher = () => {

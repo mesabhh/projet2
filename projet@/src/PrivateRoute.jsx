@@ -15,10 +15,9 @@ export default function PrivateRoute({ children }) {
     return () => unsub();
   }, []);
 
-  if (loading)
-    return <div className="has-text-centered mt-6">⏳ Chargement...</div>;
+  if (loading) return <div className="has-text-centered mt-6">Chargement...</div>;
   if (!user) {
-    window.alert("Vous devez être connecté pour accéder à cette page.");
+    window.alert("Vous devez etre connecte pour acceder a cette page.");
     return <Navigate to="/connexion" replace />;
   }
   return children;

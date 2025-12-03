@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./Navbar.jsx";
 import PrivateRoute from "./PrivateRoute.jsx";
-
-// Pages
+import GestionFormAdmin from "./GestionFormAdmin.jsx";
 import App from "./App.jsx";
 import Profile from "./Profile.jsx";
 import Connexion from "./Connexion.jsx";
@@ -13,7 +12,7 @@ export function Routeur() {
     <BrowserRouter>
       <Navbar />
       <Routes>
-        {/* 🔐 Routes privées */}
+        {/* Routes privees */}
         <Route
           path="/"
           element={
@@ -22,7 +21,16 @@ export function Routeur() {
             </PrivateRoute>
           }
         />
-        
+
+        <Route
+          path="/gestion-formulaires"
+          element={
+            <PrivateRoute>
+              <GestionFormAdmin />
+            </PrivateRoute>
+          }
+        />
+
         <Route
           path="/profile"
           element={
@@ -32,8 +40,7 @@ export function Routeur() {
           }
         />
 
-
-        {/* 🌐 Routes publiques */}
+        {/* Routes publiques */}
         <Route path="/connexion" element={<Connexion />} />
         <Route path="/inscription" element={<Inscription />} />
       </Routes>

@@ -15,7 +15,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await signOut(auth);
-    navigate("/connexion"); // ✅ mieux de rediriger vers connexion après déconnexion
+    navigate("/connexion"); // redirect after logout
   };
 
   return (
@@ -23,7 +23,7 @@ export default function Navbar() {
       className="navbar"
       role="navigation"
       aria-label="main navigation"
-      style={{ backgroundColor: "#6a0dad" }}
+      style={{ backgroundColor: "#0f172a", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
     >
       <div className="navbar-brand">
         <Link
@@ -49,7 +49,7 @@ export default function Navbar() {
 
       <div className={`navbar-menu ${isActive ? "is-active" : ""}`}>
         <div className="navbar-end">
-          {/* 🔓 Utilisateur non connecté */}
+          {/* Utilisateur non connecte */}
           {!user && (
             <>
               <div className="navbar-item">
@@ -73,9 +73,19 @@ export default function Navbar() {
             </>
           )}
 
-          {/* 🔐 Utilisateur connecté */}
+          {/* Utilisateur connecte */}
           {user && (
             <>
+              <div className="navbar-item">
+                <Link
+                  className="button"
+                  to="/gestion-formulaires"
+                  style={{ backgroundColor: "black", color: "white", border: "none" }}
+                >
+                  Formulaires
+                </Link>
+              </div>
+
               <div className="navbar-item">
                 <Link
                   className="button"
@@ -86,7 +96,6 @@ export default function Navbar() {
                 </Link>
               </div>
 
-              {/* 💬 Onglet Messages */}
               <div className="navbar-item">
                 <Link
                   className="button"
@@ -103,7 +112,7 @@ export default function Navbar() {
                   onClick={handleLogout}
                   style={{ backgroundColor: "black", color: "white", border: "none" }}
                 >
-                  Déconnexion
+                  Deconnexion
                 </button>
               </div>
             </>
