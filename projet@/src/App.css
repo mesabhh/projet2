@@ -286,6 +286,198 @@ th {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.1fr) minmax(320px, 0.9fr);
+  gap: 2rem;
+  padding: 2rem 0;
+}
+
+.auth-hero {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.role-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.role-option {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.role-option ul {
+  padding-left: 1rem;
+  margin: 0.5rem 0 0;
+  color: #c8d0e6;
+  list-style: disc;
+}
+
+.role-option-active {
+  border-color: rgba(141, 215, 255, 0.8);
+  background: rgba(60, 64, 128, 0.25);
+}
+
+.test-credentials {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  padding: 1rem;
+  font-size: 0.95rem;
+}
+
+.test-credentials .label {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #8dd7ff;
+}
+
+.auth-panel {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.auth-form input {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+
+.divider {
+  text-align: center;
+  position: relative;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9dadc6;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  position: absolute;
+  width: 30%;
+  height: 1px;
+  top: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.social-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.profile-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+.profile-hero {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 1.75rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.profile-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.profile-card {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-avatar img {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.upload-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .stacked {
   display: flex;
   flex-direction: column;
@@ -653,7 +845,28 @@ textarea {
   justify-content: space-between;
 }
 
+.env-snippet {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  color: #f8fafc;
+  margin: 0.75rem 0;
+  word-break: break-all;
+}
+
 @media (max-width: 1024px) {
+  .auth-layout {
+    grid-template-columns: 1fr;
+  }
+  .profile-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .profile-badges {
+    width: 100%;
+  }
   .grid {
     grid-template-columns: 1fr;
   }

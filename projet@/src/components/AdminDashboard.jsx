@@ -536,6 +536,17 @@ export default function AdminDashboard({ user }) {
                   {answer.aiFeedback && (
                     <p className="hint">Suggestion IA : {answer.aiFeedback}</p>
                   )}
+                  {answer.aiHighlights?.length > 0 && (
+                    <p className="hint">
+                      Points vérifiés : {answer.aiHighlights.join(", ")}
+                    </p>
+                  )}
+                  {answer.aiEngine && (
+                    <p className="hint">
+                      Moteur : {answer.aiEngine}
+                      {answer.aiModel ? ` (${answer.aiModel})` : ""}
+                    </p>
+                  )}
                 </article>
               ))}
             </div>

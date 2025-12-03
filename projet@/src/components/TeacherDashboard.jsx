@@ -11,6 +11,11 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { firestore, storage } from "../firebase";
+import {
+  analyzeAnswerWithOpenAi,
+  isOpenAiConfigured,
+  runFallbackAnalysis,
+} from "../services/openAiValidator";
 
 const statusLabels = {
   soumis: "Soumis",
@@ -98,45 +103,6 @@ const sanitizeFilename = (value) =>
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-_]/g, "");
 
-const runLocalAi = (response, rule) => {
-  const clean = response.trim();
-  if (!clean) {
-    return {
-      aiStatus: "Non conforme",
-      aiFeedback: "La réponse est vide.",
-    };
-  }
-  if (clean.length < 80) {
-    return {
-      aiStatus: "À améliorer",
-      aiFeedback: "Ajoutez plus de détails (80 caractères minimum).",
-    };
-  }
-  if (rule) {
-    const keywords = rule.toLowerCase().split(/\s+/).slice(0, 2);
-    const missingKeyword = keywords.find(
-      (keyword) => keyword.length > 3 && !clean.toLowerCase().includes(keyword)
-    );
-    if (missingKeyword) {
-      return {
-        aiStatus: "À améliorer",
-        aiFeedback: `Mentionnez l'élément suivant : "${missingKeyword}".`,
-      };
-    }
-  }
-  if (clean.length < 150) {
-    return {
-      aiStatus: "À améliorer",
-      aiFeedback:
-        "Structurez la réponse avec les objectifs, stratégies et évaluation.",
-    };
-  }
-  return {
-    aiStatus: "Conforme",
-    aiFeedback: "Réponse suffisamment détaillée.",
-  };
-};
-
 export default function TeacherDashboard({ user }) {
   const [activeForm, setActiveForm] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -145,6 +111,8 @@ export default function TeacherDashboard({ user }) {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [analyzingId, setAnalyzingId] = useState(null);
+  const [analysisErrors, setAnalysisErrors] = useState({});
+  const openAiReady = isOpenAiConfigured();
 
   useEffect(() => {
     const q = query(
@@ -202,17 +170,29 @@ export default function TeacherDashboard({ user }) {
         response: value,
       },
     }));
+    setAnalysisErrors((prev) => {
+      if (!prev[questionId]) return prev;
+      const next = { ...prev };
+      delete next[questionId];
+      return next;
+    });
   };
 
-  const handleAnalyzeQuestion = (question) => {
+  const handleAnalyzeQuestion = async (question) => {
     const entry = answers[question.id];
     if (!entry?.response?.trim()) {
       setMessage("Veuillez écrire votre réponse avant d'analyser.");
       return;
     }
     setAnalyzingId(question.id);
-    setTimeout(() => {
-      const evaluation = runLocalAi(entry.response, question.rule);
+    try {
+      const evaluation = openAiReady
+        ? await analyzeAnswerWithOpenAi({
+            question: question.text,
+            rule: question.rule,
+            response: entry.response,
+          })
+        : runFallbackAnalysis(entry.response, question.rule);
       setAnswers((prev) => ({
         ...prev,
         [question.id]: {
@@ -220,8 +200,32 @@ export default function TeacherDashboard({ user }) {
           ...evaluation,
         },
       }));
+      setAnalysisErrors((prev) => ({ ...prev, [question.id]: null }));
+      if (!openAiReady) {
+        setMessage(
+          "Analyse simplifiée appliquée (ajoutez VITE_OPENAI_API_KEY pour ChatGPT)."
+        );
+      }
+    } catch (error) {
+      console.error("handleAnalyzeQuestion", error);
+      const fallback = runFallbackAnalysis(entry.response, question.rule);
+      setAnswers((prev) => ({
+        ...prev,
+        [question.id]: {
+          ...entry,
+          ...fallback,
+        },
+      }));
+      setAnalysisErrors((prev) => ({
+        ...prev,
+        [question.id]: error.message,
+      }));
+      setMessage(
+        "Analyse IA indisponible. Vérifiez la clé ou réessayez dans un instant."
+      );
+    } finally {
       setAnalyzingId(null);
-    }, 250);
+    }
   };
 
   const buildPlanLines = (answersPayload) => {
@@ -237,6 +241,16 @@ export default function TeacherDashboard({ user }) {
       lines.push(
         `Validation : ${answer.aiStatus} – ${answer.aiFeedback || "N/A"}`
       );
+      if (answer.aiEngine) {
+        lines.push(
+          `IA : ${answer.aiEngine}${
+            answer.aiModel ? ` (${answer.aiModel})` : ""
+          }`
+        );
+      }
+      if (answer.aiHighlights?.length) {
+        lines.push(`Points clés : ${answer.aiHighlights.join(", ")}`);
+      }
       lines.push("");
     });
     return lines;
@@ -247,44 +261,62 @@ export default function TeacherDashboard({ user }) {
       setMessage("Aucun formulaire actif n'est disponible.");
       return;
     }
-    const answersPayload = activeForm.questions.map((question) => {
-      const entry = answers[question.id] || {};
-      const response = entry.response?.trim() || "";
-      const evaluation =
-        entry.aiStatus && entry.aiFeedback
-          ? entry
-          : runLocalAi(response, question.rule);
-      return {
-        questionId: question.id,
-        prompt: question.text,
-        rule: question.rule,
-        response,
-        aiStatus: evaluation.aiStatus,
-        aiFeedback: evaluation.aiFeedback,
-      };
-    });
 
-    const missingAnswer = answersPayload.find((answer) => !answer.response);
-    if (missingAnswer) {
+    const missing = activeForm.questions.find(
+      (question) => !answers[question.id]?.response?.trim()
+    );
+    if (missing) {
       setMessage("Veuillez répondre à toutes les questions du formulaire.");
       return;
     }
 
-    const summary = answersPayload.reduce(
-      (accumulator, answer) => {
-        if (answer.aiStatus === "Conforme") accumulator.conforme += 1;
-        if (answer.aiStatus === "À améliorer") accumulator.ameliorer += 1;
-        if (answer.aiStatus === "Non conforme") accumulator.nonConforme += 1;
-        return accumulator;
-      },
-      { conforme: 0, ameliorer: 0, nonConforme: 0 }
-    );
-
-    const lines = buildPlanLines(answersPayload);
-    const pdfBlob = createPdfBlob(lines);
-
+    setSaving(true);
     try {
-      setSaving(true);
+      const answersPayload = [];
+      for (const question of activeForm.questions) {
+        const entry = answers[question.id] || {};
+        const response = entry.response?.trim() || "";
+        let evaluation =
+          entry.aiStatus && entry.aiFeedback ? entry : null;
+        if (!evaluation || (openAiReady && entry.aiEngine !== "chatgpt")) {
+          try {
+            evaluation = openAiReady
+              ? await analyzeAnswerWithOpenAi({
+                  question: question.text,
+                  rule: question.rule,
+                  response,
+                })
+              : runFallbackAnalysis(response, question.rule);
+          } catch (error) {
+            console.error("analyse lors de la soumission", error);
+            evaluation = runFallbackAnalysis(response, question.rule);
+          }
+        }
+        answersPayload.push({
+          questionId: question.id,
+          prompt: question.text,
+          rule: question.rule,
+          response,
+          aiStatus: evaluation.aiStatus,
+          aiFeedback: evaluation.aiFeedback,
+          aiHighlights: evaluation.aiHighlights || [],
+          aiEngine: evaluation.aiEngine,
+          aiModel: evaluation.aiModel,
+        });
+      }
+
+      const summary = answersPayload.reduce(
+        (accumulator, answer) => {
+          if (answer.aiStatus === "Conforme") accumulator.conforme += 1;
+          if (answer.aiStatus === "À améliorer") accumulator.ameliorer += 1;
+          if (answer.aiStatus === "Non conforme") accumulator.nonConforme += 1;
+          return accumulator;
+        },
+        { conforme: 0, ameliorer: 0, nonConforme: 0 }
+      );
+
+      const lines = buildPlanLines(answersPayload);
+      const pdfBlob = createPdfBlob(lines);
       const fileRef = ref(
         storage,
         `plans/${user.uid}/${Date.now()}-${sanitizeFilename(
@@ -339,6 +371,13 @@ export default function TeacherDashboard({ user }) {
           </button>
         </header>
 
+        {!openAiReady && (
+          <div className="hint">
+            Ajoutez <code>VITE_OPENAI_API_KEY</code> dans <code>.env.local</code> pour
+            activer l&apos;analyse ChatGPT. Un mode heuristique est utilisé en attendant.
+          </div>
+        )}
+
         {!activeForm ? (
           <p className="hint">
             Aucun formulaire n&apos;est disponible pour le moment. Revenez plus
@@ -374,6 +413,16 @@ export default function TeacherDashboard({ user }) {
                   <div className="panel-actions">
                     {entry.aiFeedback && (
                       <p className="hint">{entry.aiFeedback}</p>
+                    )}
+                    {entry.aiHighlights?.length > 0 && (
+                      <p className="hint">
+                        Points clés : {entry.aiHighlights.join(", ")}
+                      </p>
+                    )}
+                    {analysisErrors[question.id] && (
+                      <p className="hint" style={{ color: "#fca5a5" }}>
+                        {analysisErrors[question.id]}
+                      </p>
                     )}
                     <button
                       className="secondary-button"

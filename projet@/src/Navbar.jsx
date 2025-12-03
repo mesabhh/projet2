@@ -16,8 +16,12 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    navigate("/connexion"); // redirect after logout
+    try {
+      await signOut(auth);
+      navigate("/connexion");
+    } catch (error) {
+      window.alert("Impossible de se déconnecter : " + error.message);
+    }
   };
 
   return (
@@ -81,10 +85,10 @@ export default function Navbar() {
               <div className="navbar-item">
                 <Link
                   className="button"
-                  to="/gestion-formulaires"
+                  to="/"
                   style={{ backgroundColor: "black", color: "white", border: "none" }}
                 >
-                  Formulaires
+                  Tableau de bord
                 </Link>
               </div>
 
@@ -113,17 +117,6 @@ export default function Navbar() {
                   </Link>
                 </div>
               )}
-
-              {/* 💬 Onglet Messages */}
-              <div className="navbar-item">
-                <Link
-                  className="button"
-                  to="/chat"
-                  style={{ backgroundColor: "black", color: "white", border: "none" }}
-                >
-                  Messages
-                </Link>
-              </div>
 
               <div className="navbar-item">
                 <button

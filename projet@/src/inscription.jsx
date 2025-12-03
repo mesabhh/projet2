@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -12,18 +12,37 @@ import {
   githubProvider,
   facebookProvider,
 } from "./firebase";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { doc, setDoc } from "firebase/firestore";
 
+const ROLES = {
+  admin: {
+    title: "Coordonnateur",
+    description: "Crée des formulaires, valide les plans et publie les décisions.",
+  },
+  enseignant: {
+    title: "Enseignant",
+    description: "Complète le formulaire actif et soumet son plan pour validation.",
+  },
+};
+
+const providerMap = {
+  google: googleProvider,
+  github: githubProvider,
+  facebook: facebookProvider,
+};
+
 export default function Inscription() {
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [selectedRole, setSelectedRole] = useState("enseignant");
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
-  // 📌 Sauvegarde utilisateur Firestore
-  const saveUserToFirestore = async (user) => {
+  const roleInfo = useMemo(() => ROLES[selectedRole], [selectedRole]);
+
+  const saveUserToFirestore = async (user, role) => {
     if (!user) return;
     const userRef = doc(firestore, "users", user.uid);
     await setDoc(
@@ -32,29 +51,23 @@ export default function Inscription() {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName || user.email,
+        role,
       },
       { merge: true }
     );
   };
 
-  // 📨 Inscription avec email et envoi du lien de vérification
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  const handleRegister = async (event) => {
+    event.preventDefault();
+    setMessage("");
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Ajouter le nom d'affichage
       await updateProfile(user, { displayName });
-
-      // Sauvegarder dans Firestore
-      await saveUserToFirestore(user);
-
-      // 📩 Envoyer l'email de vérification
+      await saveUserToFirestore(user, selectedRole);
       await sendEmailVerification(user);
-
       setMessage(
-        "Compte créé avec succès ! Un email de vérification vous a été envoyé."
+        "Compte créé avec succès ! Vérifiez vos courriels pour activer votre accès."
       );
       navigate("/connexion");
     } catch (error) {
@@ -62,18 +75,14 @@ export default function Inscription() {
     }
   };
 
-  // 🌐 Inscription via Google / GitHub / Facebook (pas besoin de vérif email ici)
   const handleSocialRegister = async (providerName) => {
+    const provider = providerMap[providerName];
+    if (!provider) return;
+    setMessage("");
     try {
-      let provider;
-      if (providerName === "google") provider = googleProvider;
-      if (providerName === "github") provider = githubProvider;
-      if (providerName === "facebook") provider = facebookProvider;
-
       const result = await signInWithPopup(auth, provider);
-      await saveUserToFirestore(result.user);
-
-      setMessage(`Connecté avec ${providerName}`);
+      await updateProfile(result.user, { displayName: displayName || result.user.displayName });
+      await saveUserToFirestore(result.user, selectedRole);
       navigate("/");
     } catch (error) {
       setMessage("Erreur : " + error.message);
@@ -81,114 +90,121 @@ export default function Inscription() {
   };
 
   return (
-    <section className="section">
-      <div className="container" style={{ maxWidth: "420px" }}>
-        <h1 className="title has-text-centered">Inscription</h1>
-
-        <div className="box">
-          <form onSubmit={handleRegister}>
-            <div className="field">
-              <label className="label">Nom d'affichage</label>
-              <div className="control has-icons-left">
-                <input
-                  className="input"
-                  type="text"
-                  placeholder="Votre nom"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                />
-                <span className="icon is-small is-left">
-                  <i className="fas fa-user"></i>
-                </span>
-              </div>
-            </div>
-
-            <div className="field">
-              <label className="label">Adresse email</label>
-              <div className="control has-icons-left">
-                <input
-                  className="input"
-                  type="email"
-                  placeholder="ex: nom@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <span className="icon is-small is-left">
-                  <i className="fas fa-envelope"></i>
-                </span>
-              </div>
-            </div>
-
-            <div className="field">
-              <label className="label">Mot de passe</label>
-              <div className="control has-icons-left">
-                <input
-                  className="input"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <span className="icon is-small is-left">
-                  <i className="fas fa-lock"></i>
-                </span>
-              </div>
-            </div>
-
-            <div className="field">
-              <button className="button is-link is-fullwidth" type="submit">
-                Créer un compte
-              </button>
-            </div>
-          </form>
-
-          <div className="has-text-centered" style={{ margin: "1rem 0" }}>
-            — ou —
-          </div>
-
-          <div className="field">
+    <section className="auth-layout">
+      <div className="auth-hero">
+        <p className="panel-label">Créer un compte</p>
+        <h1>Bienvenue sur la plateforme</h1>
+        <p className="hint">
+          Sélectionnez votre rôle pour que nous configurions automatiquement les bonnes
+          autorisations dans Firestore.
+        </p>
+        <div className="role-options">
+          {Object.entries(ROLES).map(([key, role]) => (
             <button
-              className="button is-dark is-fullwidth"
+              key={key}
               type="button"
-              onClick={() => handleSocialRegister("google")}
-            >
-              Continuer avec Google
-            </button>
-          </div>
-
-          <div className="field">
-            <button
-              className="button is-black is-fullwidth"
-              type="button"
-              onClick={() => handleSocialRegister("github")}
-            >
-              Continuer avec GitHub
-            </button>
-          </div>
-
-          <div className="field">
-            <button
-              className="button is-info is-fullwidth"
-              type="button"
-              onClick={() => handleSocialRegister("facebook")}
-            >
-              Continuer avec Facebook
-            </button>
-          </div>
-
-          {message && (
-            <div
-              className={`notification ${
-                message.includes("Erreur") ? "is-danger" : "is-success"
+              className={`role-option ${
+                selectedRole === key ? "role-option-active" : ""
               }`}
+              onClick={() => setSelectedRole(key)}
             >
-              {message}
-            </div>
-          )}
+              <div>
+                <p className="panel-label">{role.title}</p>
+                <h3>{role.title}</h3>
+                <p className="hint">{role.description}</p>
+              </div>
+              {selectedRole === key && <span className="status-pill">Sélectionné</span>}
+            </button>
+          ))}
         </div>
+        <div className="test-credentials">
+          <p className="label">Astuce</p>
+          <p>Vous pouvez créer des comptes de démonstration distincts pour chaque rôle.</p>
+        </div>
+      </div>
+
+      <div className="auth-panel">
+        <h2>Inscription {roleInfo.title}</h2>
+        <form onSubmit={handleRegister} className="auth-form">
+          <label>
+            Nom complet
+            <input
+              type="text"
+              placeholder="Votre nom"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Adresse email
+            <input
+              type="email"
+              placeholder="ex: nom@example.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Mot de passe
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </label>
+
+          <button className="primary-button" type="submit">
+            Créer mon compte
+          </button>
+        </form>
+
+        <div className="divider">
+          <span>Ou continuez avec</span>
+        </div>
+
+        <div className="social-grid">
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => handleSocialRegister("google")}
+          >
+            Google
+          </button>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => handleSocialRegister("github")}
+          >
+            GitHub
+          </button>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => handleSocialRegister("facebook")}
+          >
+            Facebook
+          </button>
+        </div>
+
+        {message && (
+          <div
+            className={`banner ${message.includes("Erreur") ? "danger" : "success"}`}
+            style={{ marginTop: "1rem" }}
+          >
+            {message}
+          </div>
+        )}
+
+        <p className="hint" style={{ marginTop: "1rem" }}>
+          Vous avez déjà un compte ?{" "}
+          <Link to="/connexion" style={{ color: "#8dd7ff" }}>
+            Retour à la connexion
+          </Link>
+        </p>
       </div>
     </section>
   );

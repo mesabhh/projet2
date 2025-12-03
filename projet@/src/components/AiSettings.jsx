@@ -166,6 +166,32 @@ export default function AiSettings() {
         <p>Mis à jour par : {updatedBy || "—"}</p>
         <p>Le : {renderTimestamp()}</p>
       </section>
+
+      <section className="panel">
+        <header className="panel-header">
+          <div>
+            <p className="panel-label">Clé API</p>
+            <h2>Où coller la clé OpenAI</h2>
+            <p className="hint">
+              Pour activer l&apos;option ChatGPT, ajoutez votre clé dans un fichier
+              <code style={{ marginLeft: "0.35rem" }}>.env.local</code> (non versionné)
+              à la racine du projet Vite.
+            </p>
+          </div>
+        </header>
+        <p>
+          1. Copiez le fichier <code>.env.example</code> en <code>.env.local</code>.
+        </p>
+        <p>
+          2. Remplacez la valeur ci-dessous par votre clé OpenAI (ne la partagez
+          jamais publiquement):
+        </p>
+        <pre className="env-snippet">VITE_OPENAI_API_KEY=&quot;collez_votre_clef_ici&quot;</pre>
+        <p className="hint">
+          Le client Vite expose cette variable via <code>import.meta.env.VITE_OPENAI_API_KEY</code>.
+          La clé n&apos;est jamais commitée si <code>.env.local</code> est ignoré.
+        </p>
+      </section>
     </main>
   );
 }
