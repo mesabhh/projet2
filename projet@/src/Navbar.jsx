@@ -2,11 +2,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { auth } from "./firebase";
+import { ADMIN_EMAILS } from "./constants/roles";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [isActive, setIsActive] = useState(false);
   const navigate = useNavigate();
+  const isAdmin = user?.email && ADMIN_EMAILS.includes(user.email);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
@@ -96,6 +98,23 @@ export default function Navbar() {
                 </Link>
               </div>
 
+              {isAdmin && (
+                <div className="navbar-item">
+                  <Link
+                    className="button"
+                    to="/ia"
+                    style={{
+                      backgroundColor: "#fbbf24",
+                      color: "black",
+                      border: "none",
+                    }}
+                  >
+                    IA
+                  </Link>
+                </div>
+              )}
+
+              {/* 💬 Onglet Messages */}
               <div className="navbar-item">
                 <Link
                   className="button"

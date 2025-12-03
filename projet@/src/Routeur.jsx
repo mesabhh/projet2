@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import Profile from "./Profile.jsx";
 import Connexion from "./Connexion.jsx";
 import Inscription from "./Inscription.jsx";
+import AiSettings from "./components/AiSettings.jsx";
 
 export function Routeur() {
   return (
@@ -36,6 +37,14 @@ export function Routeur() {
           element={
             <PrivateRoute>
               <Profile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/ia"
+          element={
+            <PrivateRoute>
+              <AiSettings />
             </PrivateRoute>
           }
         />

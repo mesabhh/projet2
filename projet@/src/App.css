@@ -619,6 +619,40 @@ textarea {
   color: #9dadc6;
 }
 
+.ai-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.ai-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  min-height: 220px;
+}
+
+.ai-card-active {
+  border-color: rgba(141, 215, 255, 0.7);
+  box-shadow: 0 10px 30px rgba(55, 65, 81, 0.4);
+}
+
+.ai-list {
+  padding-left: 1.2rem;
+  margin: 0.75rem 0 0;
+  color: #c8d0e6;
+}
+
+.ai-card .panel-actions {
+  justify-content: space-between;
+}
+
 @media (max-width: 1024px) {
   .grid {
     grid-template-columns: 1fr;

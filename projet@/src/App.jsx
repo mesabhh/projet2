@@ -5,8 +5,7 @@ import "./App.css";
 import { auth, firestore } from "./firebase";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
-
-const ADMIN_EMAILS = ["coordonnateur@appweb.demo", "admin@example.com"];
+import { ADMIN_EMAILS } from "./constants/roles";
 
 function App() {
   const [user, setUser] = useState(null);
