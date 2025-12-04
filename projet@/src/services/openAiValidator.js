@@ -3,7 +3,7 @@ const FALLBACK_MODEL = "Heuristique locale";
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 const baseSystemPrompt =
-  "Tu es un coordonnateur pédagogique. Tu dois vérifier si une réponse respecte la question et la règle de validation fournie. Retourne exclusivement un objet JSON avec les clés: aiStatus (valeurs: Conforme, À améliorer, Non conforme), aiFeedback (texte en français, 2 phrases max), aiHighlights (liste courte d'éléments requis).";
+  "Tu es un coordonnateur pedagogique. Verifie si une reponse respecte la question et la regle de validation fournie. Retourne uniquement un JSON avec les cles: aiStatus (Conforme, A ameliorer, Non conforme), aiFeedback (francais, 2 phrases max), aiHighlights (liste courte d'elements requis).";
 
 const parseJsonContent = (raw) => {
   if (!raw) return null;
@@ -16,16 +16,14 @@ const parseJsonContent = (raw) => {
 };
 
 const normalizeStatus = (status) => {
-  if (!status) return "À améliorer";
+  if (!status) return "A ameliorer";
   const lower = status.toString().toLowerCase();
   if (lower.includes("non")) return "Non conforme";
   if (lower.includes("conforme")) return "Conforme";
-  return "À améliorer";
+  return "A ameliorer";
 };
 
-export const isOpenAiConfigured = () => {
-  return Boolean(import.meta.env.VITE_OPENAI_API_KEY);
-};
+export const isOpenAiConfigured = () => Boolean(import.meta.env.VITE_OPENAI_API_KEY);
 
 export async function analyzeAnswerWithOpenAi({
   question,
@@ -35,9 +33,7 @@ export async function analyzeAnswerWithOpenAi({
 }) {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error(
-      "Aucune clé OpenAI détectée. Ajoutez VITE_OPENAI_API_KEY dans .env.local."
-    );
+    throw new Error("Aucune cle OpenAI detectee. Ajoutez VITE_OPENAI_API_KEY dans .env.local.");
   }
 
   const payload = {
@@ -51,11 +47,11 @@ export async function analyzeAnswerWithOpenAi({
         content: [
           {
             type: "text",
-            text: `Question: ${question}\nRègle IA: ${rule || "Non spécifiée"}\nRéponse de l'enseignant:\n${response}`,
+            text: `Question: ${question}\nRegle IA: ${rule || "Non specifiee"}\nReponse de l'enseignant:\n${response}`,
           },
           {
             type: "text",
-            text: "Retourne uniquement le JSON demandé, sans commentaire additionnel.",
+            text: "Retourne uniquement le JSON demande, sans commentaire additionnel.",
           },
         ],
       },
@@ -73,20 +69,18 @@ export async function analyzeAnswerWithOpenAi({
 
   if (!request.ok) {
     const errorText = await request.text();
-    throw new Error(
-      `Erreur OpenAI (${request.status}): ${errorText.slice(0, 200)}`
-    );
+    throw new Error(`Erreur OpenAI (${request.status}): ${errorText.slice(0, 200)}`);
   }
 
   const completion = await request.json();
   const content =
     completion?.choices?.[0]?.message?.content ||
-    completion?.choices?.[0]?.message?.content[0]?.text ||
+    completion?.choices?.[0]?.message?.content?.[0]?.text ||
     "";
 
   const parsed = parseJsonContent(content);
   if (!parsed) {
-    throw new Error("Réponse IA invalide (format JSON introuvable).");
+    throw new Error("Reponse IA invalide (format JSON introuvable).");
   }
 
   return {
@@ -105,7 +99,7 @@ export function runFallbackAnalysis(response, rule) {
   if (!clean) {
     return {
       aiStatus: "Non conforme",
-      aiFeedback: "La réponse est vide.",
+      aiFeedback: "La reponse est vide.",
       aiHighlights: [],
       aiEngine: "heuristique",
       aiModel: FALLBACK_MODEL,
@@ -113,8 +107,8 @@ export function runFallbackAnalysis(response, rule) {
   }
   if (clean.length < 80) {
     return {
-      aiStatus: "À améliorer",
-      aiFeedback: "Ajoutez davantage de détails (80 caractères minimum).",
+      aiStatus: "A ameliorer",
+      aiFeedback: "Ajoutez davantage de details (80 caracteres minimum).",
       aiHighlights: [],
       aiEngine: "heuristique",
       aiModel: FALLBACK_MODEL,
@@ -127,8 +121,8 @@ export function runFallbackAnalysis(response, rule) {
     );
     if (missing) {
       return {
-        aiStatus: "À améliorer",
-        aiFeedback: `Mentionnez l'élément suivant : "${missing}".`,
+        aiStatus: "A ameliorer",
+        aiFeedback: `Mentionnez l'element suivant : "${missing}".`,
         aiHighlights: [missing],
         aiEngine: "heuristique",
         aiModel: FALLBACK_MODEL,
@@ -137,9 +131,8 @@ export function runFallbackAnalysis(response, rule) {
   }
   if (clean.length < 150) {
     return {
-      aiStatus: "À améliorer",
-      aiFeedback:
-        "Structurez la réponse avec objectifs, activités et évaluation.",
+      aiStatus: "A ameliorer",
+      aiFeedback: "Structurez la reponse avec objectifs, activites et evaluation.",
       aiHighlights: [],
       aiEngine: "heuristique",
       aiModel: FALLBACK_MODEL,
@@ -147,7 +140,7 @@ export function runFallbackAnalysis(response, rule) {
   }
   return {
     aiStatus: "Conforme",
-    aiFeedback: "Réponse cohérente et suffisamment détaillée.",
+    aiFeedback: "Reponse coherente et suffisamment detaillee.",
     aiHighlights: [],
     aiEngine: "heuristique",
     aiModel: FALLBACK_MODEL,

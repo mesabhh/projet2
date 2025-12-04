@@ -20,8 +20,8 @@ const emptyBuilder = {
 
 const statusLabels = {
   soumis: "Soumis",
-  approuve: "Approuvé",
-  corrections: "À corriger",
+  approuve: "Approuve",
+  corrections: "A corriger",
 };
 
 const statusClass = (value) => {
@@ -75,10 +75,7 @@ export default function AdminDashboard({ user }) {
   }, [editingFormId]);
 
   useEffect(() => {
-    const q = query(
-      collection(firestore, "coursePlans"),
-      orderBy("createdAt", "desc")
-    );
+    const q = query(collection(firestore, "coursePlans"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snapshot) => {
       const nextPlans = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
@@ -102,16 +99,11 @@ export default function AdminDashboard({ user }) {
     return plans.filter((plan) => {
       const teacherMatches =
         !filters.teacher ||
-        plan.teacherEmail
-          ?.toLowerCase()
-          .includes(filters.teacher.toLowerCase()) ||
-        plan.teacherName
-          ?.toLowerCase()
-          .includes(filters.teacher.toLowerCase());
+        plan.teacherEmail?.toLowerCase().includes(filters.teacher.toLowerCase()) ||
+        plan.teacherName?.toLowerCase().includes(filters.teacher.toLowerCase());
       const statusMatches = !filters.status || plan.status === filters.status;
       const sessionMatches =
-        !filters.session ||
-        plan.session?.toLowerCase() === filters.session.toLowerCase();
+        !filters.session || plan.session?.toLowerCase() === filters.session.toLowerCase();
       return teacherMatches && statusMatches && sessionMatches;
     });
   }, [filters, plans]);
@@ -125,10 +117,7 @@ export default function AdminDashboard({ user }) {
   const handleAddQuestion = () => {
     setBuilder((prev) => ({
       ...prev,
-      questions: [
-        ...prev.questions,
-        { id: generateQuestionId(), text: "", rule: "" },
-      ],
+      questions: [...prev.questions, { id: generateQuestionId(), text: "", rule: "" }],
     }));
   };
 
@@ -148,22 +137,15 @@ export default function AdminDashboard({ user }) {
     }));
   };
 
-  const baseBuilderValid =
+  const builderIsValid =
     builder.name.trim() &&
     builder.session.trim() &&
-    builder.questions.length > 0 &&
+    builder.questions.length >= 10 &&
     builder.questions.every((question) => question.text.trim());
-  const builderIsValid = !editingFormId
-    ? baseBuilderValid && builder.questions.length >= 10
-    : baseBuilderValid;
 
   const handleSaveForm = async () => {
     if (!builderIsValid) {
-      setBuilderMessage(
-        editingFormId
-          ? "Complétez le nom, la session et chaque question avant d'enregistrer."
-          : "Veuillez compléter le nom, la session et au moins 10 questions."
-      );
+      setBuilderMessage("Veuillez completer le nom, la session et au moins 10 questions.");
       return;
     }
     setBuilderMessage("");
@@ -181,14 +163,14 @@ export default function AdminDashboard({ user }) {
     try {
       if (editingFormId) {
         await updateDoc(doc(firestore, "forms", editingFormId), payload);
-        setBuilderMessage("Formulaire mis à jour.");
+        setBuilderMessage("Formulaire mis a jour.");
       } else {
         await addDoc(collection(firestore, "forms"), {
           ...payload,
           isActive: false,
           createdAt: serverTimestamp(),
         });
-        setBuilderMessage("Nouveau formulaire créé.");
+        setBuilderMessage("Nouveau formulaire cree.");
       }
       handleResetBuilder();
     } catch (error) {
@@ -267,7 +249,7 @@ export default function AdminDashboard({ user }) {
         <header className="panel-header">
           <div>
             <p className="panel-label">Gestion des formulaires</p>
-            <h2>Créer ou modifier un formulaire</h2>
+            <h2>Creer ou modifier un formulaire</h2>
           </div>
           <div className="panel-actions">
             {editingFormId && (
@@ -275,12 +257,8 @@ export default function AdminDashboard({ user }) {
                 Annuler
               </button>
             )}
-            <button
-              className="primary-button"
-              onClick={handleSaveForm}
-              disabled={!builderIsValid}
-            >
-              {editingFormId ? "Mettre à jour" : "Créer le formulaire"}
+            <button className="primary-button" onClick={handleSaveForm} disabled={!builderIsValid}>
+              {editingFormId ? "Mettre a jour" : "Creer le formulaire"}
             </button>
           </div>
         </header>
@@ -310,9 +288,7 @@ export default function AdminDashboard({ user }) {
         </div>
 
         <div className="question-list">
-          <div className="panel-label">
-            Questions ({builder.questions.length})
-          </div>
+          <div className="panel-label">Questions ({builder.questions.length})</div>
           {builder.questions.map((question, index) => (
             <div key={question.id} className="question-item">
               <span className="question-index">{index + 1}.</span>
@@ -327,17 +303,14 @@ export default function AdminDashboard({ user }) {
                 />
                 <input
                   type="text"
-                  placeholder="Règle IA (ex.: Mentionner les objectifs du cours)"
+                  placeholder="Regle IA (ex.: mentionner les objectifs du cours)"
                   value={question.rule}
                   onChange={(event) =>
                     handleQuestionChange(question.id, "rule", event.target.value)
                   }
                 />
               </div>
-              <button
-                className="ghost-button"
-                onClick={() => handleDeleteQuestion(question.id)}
-              >
+              <button className="ghost-button" onClick={() => handleDeleteQuestion(question.id)}>
                 Retirer
               </button>
             </div>
@@ -352,12 +325,12 @@ export default function AdminDashboard({ user }) {
       <section className="panel">
         <header className="panel-header">
           <div>
-            <p className="panel-label">Formulaires enregistrés</p>
+            <p className="panel-label">Formulaires enregistres</p>
             <h2>Activer, modifier ou supprimer</h2>
           </div>
         </header>
         {forms.length === 0 ? (
-          <p className="hint">Aucun formulaire n'a encore été créé.</p>
+          <p className="hint">Aucun formulaire n'a encore ete cree.</p>
         ) : (
           <div className="table-wrapper">
             <table>
@@ -377,31 +350,18 @@ export default function AdminDashboard({ user }) {
                     <td>{form.session}</td>
                     <td>{form.questions?.length || 0}</td>
                     <td>
-                      <span
-                        className={`status-pill ${
-                          form.isActive ? "status-success" : ""
-                        }`}
-                      >
+                      <span className={`status-pill ${form.isActive ? "status-success" : ""}`}>
                         {form.isActive ? "Actif" : "Inactif"}
                       </span>
                     </td>
                     <td className="table-actions">
-                      <button
-                        className="ghost-button"
-                        onClick={() => handleEditForm(form)}
-                      >
+                      <button className="ghost-button" onClick={() => handleEditForm(form)}>
                         Modifier
                       </button>
-                      <button
-                        className="ghost-button"
-                        onClick={() => handleToggleActive(form)}
-                      >
-                        {form.isActive ? "Désactiver" : "Activer"}
+                      <button className="ghost-button" onClick={() => handleToggleActive(form)}>
+                        {form.isActive ? "Desactiver" : "Activer"}
                       </button>
-                      <button
-                        className="danger-button"
-                        onClick={() => handleDeleteForm(form.id)}
-                      >
+                      <button className="danger-button" onClick={() => handleDeleteForm(form.id)}>
                         Supprimer
                       </button>
                     </td>
@@ -443,8 +403,8 @@ export default function AdminDashboard({ user }) {
             >
               <option value="">Tous</option>
               <option value="soumis">Soumis</option>
-              <option value="approuve">Approuvé</option>
-              <option value="corrections">À corriger</option>
+              <option value="approuve">Approuve</option>
+              <option value="corrections">A corriger</option>
             </select>
           </label>
           <label>
@@ -461,9 +421,7 @@ export default function AdminDashboard({ user }) {
         </div>
 
         {filteredPlans.length === 0 ? (
-          <p className="hint">
-            Aucun plan ne correspond aux filtres sélectionnés.
-          </p>
+          <p className="hint">Aucun plan ne correspond aux filtres selectionnes.</p>
         ) : (
           <div className="table-wrapper">
             <table>
@@ -488,17 +446,12 @@ export default function AdminDashboard({ user }) {
                     </td>
                     <td>{plan.session}</td>
                     <td>
-                      <span
-                        className={`status-pill ${statusClass(plan.status || "soumis")}`}
-                      >
+                      <span className={`status-pill ${statusClass(plan.status || "soumis")}`}>
                         {statusLabels[plan.status] || "Soumis"}
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="ghost-button"
-                        onClick={() => handlePlanSelection(plan)}
-                      >
+                      <button className="ghost-button" onClick={() => handlePlanSelection(plan)}>
                         Voir
                       </button>
                     </td>
@@ -513,10 +466,10 @@ export default function AdminDashboard({ user }) {
           <div className="plan-detail">
             <header>
               <div>
-                <p className="panel-label">Plan sélectionné</p>
+                <p className="panel-label">Plan selectionne</p>
                 <h3>{selectedPlan.formName}</h3>
                 <p className="hint">
-                  {selectedPlan.teacherName} – {selectedPlan.teacherEmail}
+                  {selectedPlan.teacherName} - {selectedPlan.teacherEmail}
                 </p>
               </div>
               <button className="ghost-button" onClick={() => setSelectedPlan(null)}>
@@ -531,20 +484,14 @@ export default function AdminDashboard({ user }) {
                     <h4>
                       {index + 1}. {answer.prompt}
                     </h4>
-                    <span
-                      className={`status-pill ${statusClass(answer.aiStatus || "soumis")}`}
-                    >
+                    <span className={`status-pill ${statusClass(answer.aiStatus || "soumis")}`}>
                       {answer.aiStatus || "N/A"}
                     </span>
                   </div>
                   <p>{answer.response}</p>
-                  {answer.aiFeedback && (
-                    <p className="hint">Suggestion IA : {answer.aiFeedback}</p>
-                  )}
+                  {answer.aiFeedback && <p className="hint">Suggestion IA : {answer.aiFeedback}</p>}
                   {answer.aiHighlights?.length > 0 && (
-                    <p className="hint">
-                      Points vérifiés : {answer.aiHighlights.join(", ")}
-                    </p>
+                    <p className="hint">Points verifies : {answer.aiHighlights.join(", ")}</p>
                   )}
                   {answer.aiEngine && (
                     <p className="hint">
@@ -561,34 +508,23 @@ export default function AdminDashboard({ user }) {
                 Commentaire au professeur
                 <textarea
                   rows={3}
-                  placeholder="Ajoutez des pistes de correction ou des félicitations…"
+                  placeholder="Ajoutez des pistes de correction ou des felicitations."
                   value={reviewComment}
                   onChange={(event) => setReviewComment(event.target.value)}
                 />
               </label>
               <div className="panel-actions">
                 {selectedPlan.pdfUrl ? (
-                  <a
-                    className="ghost-button"
-                    href={selectedPlan.pdfUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Télécharger le PDF
+                  <a className="ghost-button" href={selectedPlan.pdfUrl} target="_blank" rel="noreferrer">
+                    Telecharger le PDF
                   </a>
                 ) : (
                   <span className="hint">PDF non disponible</span>
                 )}
-                <button
-                  className="secondary-button"
-                  onClick={() => handlePlanDecision("corrections")}
-                >
+                <button className="secondary-button" onClick={() => handlePlanDecision("corrections")}>
                   Demander des corrections
                 </button>
-                <button
-                  className="primary-button"
-                  onClick={() => handlePlanDecision("approuve")}
-                >
+                <button className="primary-button" onClick={() => handlePlanDecision("approuve")}>
                   Approuver le plan
                 </button>
               </div>

@@ -120,8 +120,8 @@ const GestionFormAdmin = () => {
       setSaving(false);
       return;
     }
-    if (!cleanedQuestions.length) {
-      setError("Ajoutez au moins une question avec son texte.");
+    if (cleanedQuestions.length < 10) {
+      setError("Ajoutez au moins 10 questions avec leur texte.");
       setSaving(false);
       return;
     }
