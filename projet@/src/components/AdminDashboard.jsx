@@ -148,16 +148,21 @@ export default function AdminDashboard({ user }) {
     }));
   };
 
-  const builderIsValid =
+  const baseBuilderValid =
     builder.name.trim() &&
     builder.session.trim() &&
-    builder.questions.length >= 10 &&
+    builder.questions.length > 0 &&
     builder.questions.every((question) => question.text.trim());
+  const builderIsValid = !editingFormId
+    ? baseBuilderValid && builder.questions.length >= 10
+    : baseBuilderValid;
 
   const handleSaveForm = async () => {
     if (!builderIsValid) {
       setBuilderMessage(
-        "Veuillez compléter le nom, la session et au moins 10 questions."
+        editingFormId
+          ? "Complétez le nom, la session et chaque question avant d'enregistrer."
+          : "Veuillez compléter le nom, la session et au moins 10 questions."
       );
       return;
     }

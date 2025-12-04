@@ -26,10 +26,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // --- App Check (protection reCAPTCHA) ---
-const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider("6Ld0TgksAAAAAB1G8-KCo757emaI8SsHrrdxlKWu"), // Replace with your reCAPTCHA site key
-  isTokenAutoRefreshEnabled: true,
-});
+// const appCheck = initializeAppCheck(app, {
+//   provider: new ReCaptchaV3Provider("6LevkCAsAAAAAARiF0PZecChIrIAnwzXV08jR5nR-KCo757emaI8SsHrrdxlKWu"),
+//   isTokenAutoRefreshEnabled: true,
+// });
 window.firebaseApp = app;
 
 // --- Services Firebase ---

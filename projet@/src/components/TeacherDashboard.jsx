@@ -135,14 +135,19 @@ export default function TeacherDashboard({ user }) {
     if (!user) return;
     const q = query(
       collection(firestore, "coursePlans"),
-      where("teacherUid", "==", user.uid),
-      orderBy("createdAt", "desc")
+      where("teacherUid", "==", user.uid)
     );
     const unsub = onSnapshot(q, (snapshot) => {
-      const nextPlans = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
+      const nextPlans = snapshot.docs
+        .map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
       setPlans(nextPlans);
       setSelectedPlan((current) => {
         if (!current) return null;
@@ -201,11 +206,6 @@ export default function TeacherDashboard({ user }) {
         },
       }));
       setAnalysisErrors((prev) => ({ ...prev, [question.id]: null }));
-      if (!openAiReady) {
-        setMessage(
-          "Analyse simplifiée appliquée (ajoutez VITE_OPENAI_API_KEY pour ChatGPT)."
-        );
-      }
     } catch (error) {
       console.error("handleAnalyzeQuestion", error);
       const fallback = runFallbackAnalysis(entry.response, question.rule);
@@ -220,9 +220,6 @@ export default function TeacherDashboard({ user }) {
         ...prev,
         [question.id]: error.message,
       }));
-      setMessage(
-        "Analyse IA indisponible. Vérifiez la clé ou réessayez dans un instant."
-      );
     } finally {
       setAnalyzingId(null);
     }
@@ -273,7 +270,7 @@ export default function TeacherDashboard({ user }) {
     setSaving(true);
     try {
       const answersPayload = [];
-      for (const question of activeForm.questions) {
+      for (const [index, question] of activeForm.questions.entries()) {
         const entry = answers[question.id] || {};
         const response = entry.response?.trim() || "";
         let evaluation =
@@ -292,17 +289,20 @@ export default function TeacherDashboard({ user }) {
             evaluation = runFallbackAnalysis(response, question.rule);
           }
         }
-        answersPayload.push({
-          questionId: question.id,
-          prompt: question.text,
-          rule: question.rule,
+        const sanitized = {
+          questionId: question.id || `question-${index}`,
+          prompt: question.text || "Question sans titre",
+          rule: question.rule || "",
           response,
-          aiStatus: evaluation.aiStatus,
-          aiFeedback: evaluation.aiFeedback,
-          aiHighlights: evaluation.aiHighlights || [],
-          aiEngine: evaluation.aiEngine,
-          aiModel: evaluation.aiModel,
-        });
+          aiStatus: evaluation.aiStatus || "À améliorer",
+          aiFeedback: evaluation.aiFeedback || "",
+          aiHighlights: Array.isArray(evaluation.aiHighlights)
+            ? evaluation.aiHighlights.filter(Boolean)
+            : [],
+          aiEngine: evaluation.aiEngine || "",
+          aiModel: evaluation.aiModel || "",
+        };
+        answersPayload.push(sanitized);
       }
 
       const summary = answersPayload.reduce(
@@ -327,9 +327,9 @@ export default function TeacherDashboard({ user }) {
       const pdfUrl = await getDownloadURL(fileRef);
 
       await addDoc(collection(firestore, "coursePlans"), {
-        formId: activeForm.id,
-        formName: activeForm.name,
-        session: activeForm.session,
+        formId: activeForm.id || "form-unknown",
+        formName: activeForm.name || "Formulaire sans titre",
+        session: activeForm.session || "Session non définie",
         answers: answersPayload,
         aiSummary: summary,
         status: "soumis",
@@ -371,13 +371,6 @@ export default function TeacherDashboard({ user }) {
           </button>
         </header>
 
-        {!openAiReady && (
-          <div className="hint">
-            Ajoutez <code>VITE_OPENAI_API_KEY</code> dans <code>.env.local</code> pour
-            activer l&apos;analyse ChatGPT. Un mode heuristique est utilisé en attendant.
-          </div>
-        )}
-
         {!activeForm ? (
           <p className="hint">
             Aucun formulaire n&apos;est disponible pour le moment. Revenez plus
@@ -385,10 +378,13 @@ export default function TeacherDashboard({ user }) {
           </p>
         ) : (
           <div className="question-answer-list">
-            {activeForm.questions.map((question) => {
+            {activeForm.questions.map((question, index) => {
               const entry = answers[question.id] || {};
               return (
-                <article key={question.id} className="answer-card">
+                <article
+                  key={question.id || `question-${index}`}
+                  className="answer-card"
+                >
                   <div className="answer-card-header">
                     <div>
                       <h4>{question.text}</h4>
