@@ -897,3 +897,32 @@ textarea {
     width: 100%;
   }
 }
+
+.select-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.select-field select {
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e9edf5;
+  font-size: 0.95rem;
+  cursor: pointer;
+  min-width: 220px;
+}
+
+.select-field select:focus {
+  outline: none;
+  border-color: rgba(124, 58, 237, 0.5);
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+.select-field select option {
+  background: #1f1f2b;
+  color: #e9edf5;
+}
+

@@ -310,8 +310,7 @@ export default function AdminDashboard({ user }) {
             <div key={question.id} className="question-item">
               <span className="question-index">{index + 1}.</span>
               <div className="question-fields">
-                <input
-                  type="text"
+                <textarea
                   placeholder="Texte de la question"
                   value={question.text}
                   onChange={(event) =>
@@ -321,9 +320,14 @@ export default function AdminDashboard({ user }) {
                       event.target.value
                     )
                   }
+                  rows={2}
+                  style={{
+                    resize: "vertical",
+                    minHeight: "3em",
+                    fontFamily: "inherit",
+                  }}
                 />
-                <input
-                  type="text"
+                <textarea
                   placeholder="Regle IA (ex.: mentionner les objectifs du cours)"
                   value={question.rule}
                   onChange={(event) =>
@@ -333,6 +337,12 @@ export default function AdminDashboard({ user }) {
                       event.target.value
                     )
                   }
+                  rows={2}
+                  style={{
+                    resize: "vertical",
+                    minHeight: "3em",
+                    fontFamily: "inherit",
+                  }}
                 />
               </div>
               <button
