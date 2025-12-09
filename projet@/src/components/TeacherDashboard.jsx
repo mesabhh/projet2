@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
   collection,
-  limit,
   onSnapshot,
   orderBy,
   query,
@@ -92,7 +91,9 @@ const createPdfBlob = (lines) => {
   offsets.forEach((offset) => {
     pdf += `${offset.toString().padStart(10, "0")} 00000 n \n`;
   });
-  pdf += `trailer << /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  pdf += `trailer << /Size ${
+    objects.length + 1
+  } /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
 
   return new Blob([pdf], { type: "application/pdf" });
 };
@@ -111,28 +112,50 @@ const ensureQuestionIds = (questions) =>
   }));
 
 export default function TeacherDashboard({ user }) {
-  const [activeForm, setActiveForm] = useState(null);
-  const [answers, setAnswers] = useState({});
+  const [availableForms, setAvailableForms] = useState([]);
+  const [selectedFormId, setSelectedFormId] = useState(null);
+  const [answersByForm, setAnswersByForm] = useState({});
   const [plans, setPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [analyzingId, setAnalyzingId] = useState(null);
-  const [analysisErrors, setAnalysisErrors] = useState({});
+  const [analysisErrorsByForm, setAnalysisErrorsByForm] = useState({});
   const openAiReady = isOpenAiConfigured();
 
-  // Active form (only one active)
+  const activeForm = useMemo(() => {
+    if (!selectedFormId) return null;
+    return availableForms.find((form) => form.id === selectedFormId) || null;
+  }, [availableForms, selectedFormId]);
+
+  const answersForSelected = useMemo(
+    () => answersByForm[selectedFormId] || {},
+    [answersByForm, selectedFormId]
+  );
+
+  const analysisErrorsForSelected = useMemo(
+    () => analysisErrorsByForm[selectedFormId] || {},
+    [analysisErrorsByForm, selectedFormId]
+  );
+
+  // Active forms list and selection
   useEffect(() => {
-    const q = query(collection(firestore, "forms"), where("isActive", "==", true), limit(1));
+    const q = query(
+      collection(firestore, "forms"),
+      where("isActive", "==", true)
+    );
     const unsub = onSnapshot(q, (snapshot) => {
-      const docSnap = snapshot.docs[0];
-      if (docSnap) {
+      const nextForms = snapshot.docs.map((docSnap) => {
         const data = docSnap.data();
         const questions = ensureQuestionIds(data.questions);
-        setActiveForm({ id: docSnap.id, ...data, questions });
-      } else {
-        setActiveForm(null);
-      }
+        return { id: docSnap.id, ...data, questions };
+      });
+      setAvailableForms(nextForms);
+      setSelectedFormId((current) => {
+        if (current && nextForms.some((form) => form.id === current))
+          return current;
+        return nextForms[0]?.id || null;
+      });
     });
     return () => unsub();
   }, []);
@@ -163,30 +186,38 @@ export default function TeacherDashboard({ user }) {
   const progress = useMemo(() => {
     if (!activeForm?.questions?.length) return 0;
     const answered = activeForm.questions.filter((question) => {
-      const entry = answers[question.id];
+      const entry = answersForSelected[question.id];
       return entry?.response?.trim();
     }).length;
     return Math.round((answered / activeForm.questions.length) * 100);
-  }, [activeForm, answers]);
+  }, [activeForm, answersForSelected]);
 
   const handleAnswerChange = (questionId, value) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        response: value,
-      },
-    }));
-    setAnalysisErrors((prev) => {
-      if (!prev[questionId]) return prev;
-      const next = { ...prev };
+    if (!selectedFormId) return;
+    setAnswersByForm((prev) => {
+      const current = prev[selectedFormId] || {};
+      return {
+        ...prev,
+        [selectedFormId]: {
+          ...current,
+          [questionId]: {
+            ...current[questionId],
+            response: value,
+          },
+        },
+      };
+    });
+    setAnalysisErrorsByForm((prev) => {
+      const current = prev[selectedFormId] || {};
+      if (!current[questionId]) return prev;
+      const next = { ...current };
       delete next[questionId];
-      return next;
+      return { ...prev, [selectedFormId]: next };
     });
   };
 
   const handleAnalyzeQuestion = async (question) => {
-    const entry = answers[question.id];
+    const entry = answersForSelected[question.id];
     if (!entry?.response?.trim()) {
       setMessage("Veuillez ecrire votre reponse avant d'analyser.");
       return;
@@ -200,30 +231,53 @@ export default function TeacherDashboard({ user }) {
             response: entry.response,
           })
         : runFallbackAnalysis(entry.response, question.rule);
-      setAnswers((prev) => ({
+      setAnswersByForm((prev) => {
+        const current = prev[selectedFormId] || {};
+        return {
+          ...prev,
+          [selectedFormId]: {
+            ...current,
+            [question.id]: {
+              ...entry,
+              ...evaluation,
+            },
+          },
+        };
+      });
+      setAnalysisErrorsByForm((prev) => ({
         ...prev,
-        [question.id]: {
-          ...entry,
-          ...evaluation,
+        [selectedFormId]: {
+          ...(prev[selectedFormId] || {}),
+          [question.id]: null,
         },
       }));
-      setAnalysisErrors((prev) => ({ ...prev, [question.id]: null }));
       if (!openAiReady) {
-        setMessage("Analyse simplifiee appliquee (ajoutez VITE_OPENAI_API_KEY pour ChatGPT).");
+        setMessage(
+          "Analyse simplifiee appliquee (ajoutez VITE_OPENAI_API_KEY pour ChatGPT)."
+        );
       }
     } catch (error) {
       console.error("handleAnalyzeQuestion", error);
       const fallback = runFallbackAnalysis(entry.response, question.rule);
-      setAnswers((prev) => ({
+      setAnswersByForm((prev) => {
+        const current = prev[selectedFormId] || {};
+        return {
+          ...prev,
+          [selectedFormId]: {
+            ...current,
+            [question.id]: {
+              ...entry,
+              ...fallback,
+            },
+          },
+        };
+      });
+      setAnalysisErrorsByForm((prev) => ({
         ...prev,
-        [question.id]: {
-          ...entry,
-          ...fallback,
+        [selectedFormId]: {
+          ...(prev[selectedFormId] || {}),
+          [question.id]: error.message,
         },
-      }));
-      setAnalysisErrors((prev) => ({
-        ...prev,
-        [question.id]: error.message,
       }));
       setMessage("Analyse IA indisponible. Verifiez la cle ou reessayez.");
     } finally {
@@ -242,9 +296,15 @@ export default function TeacherDashboard({ user }) {
     answersPayload.forEach((answer, index) => {
       lines.push(`${index + 1}. ${answer.prompt}`);
       lines.push(`Reponse : ${answer.response}`);
-      lines.push(`Validation : ${answer.aiStatus} - ${answer.aiFeedback || "N/A"}`);
+      lines.push(
+        `Validation : ${answer.aiStatus} - ${answer.aiFeedback || "N/A"}`
+      );
       if (answer.aiEngine) {
-        lines.push(`IA : ${answer.aiEngine}${answer.aiModel ? ` (${answer.aiModel})` : ""}`);
+        lines.push(
+          `IA : ${answer.aiEngine}${
+            answer.aiModel ? ` (${answer.aiModel})` : ""
+          }`
+        );
       }
       if (answer.aiHighlights?.length) {
         lines.push(`Points cles : ${answer.aiHighlights.join(", ")}`);
@@ -255,8 +315,8 @@ export default function TeacherDashboard({ user }) {
   };
 
   const handleSubmitPlan = async () => {
-    if (!activeForm || !activeForm.questions?.length) {
-      setMessage("Aucun formulaire actif n'est disponible.");
+    if (!activeForm || !activeForm.questions?.length || !selectedFormId) {
+      setMessage("Aucun formulaire actif n'est disponible ou selectionne.");
       return;
     }
     if (activeForm.questions.length < 10) {
@@ -265,7 +325,7 @@ export default function TeacherDashboard({ user }) {
     }
 
     const missing = activeForm.questions.find(
-      (question) => !answers[question.id]?.response?.trim()
+      (question) => !answersForSelected[question.id]?.response?.trim()
     );
     if (missing) {
       setMessage("Veuillez repondre a toutes les questions du formulaire.");
@@ -276,7 +336,7 @@ export default function TeacherDashboard({ user }) {
     try {
       const answersPayload = [];
       for (const question of activeForm.questions) {
-        const entry = answers[question.id] || {};
+        const entry = answersForSelected[question.id] || {};
         const response = entry.response?.trim() || "";
         let evaluation = entry.aiStatus && entry.aiFeedback ? entry : null;
         if (!evaluation || (openAiReady && entry.aiEngine !== "chatgpt")) {
@@ -318,14 +378,19 @@ export default function TeacherDashboard({ user }) {
 
       const lines = buildPlanLines(answersPayload);
       const pdfBlob = createPdfBlob(lines);
-      const teacherName = sanitizeFilename(user.displayName || user.email || "enseignant");
+      const teacherName = sanitizeFilename(
+        user.displayName || user.email || "enseignant"
+      );
       const formName = sanitizeFilename(activeForm.name || "plan");
       const timestamp = Date.now();
-      const fileRef = ref(storage, `plans/${user.uid}/${teacherName}_${formName}_${timestamp}.pdf`);
+      const fileRef = ref(
+        storage,
+        `plans/${user.uid}/${teacherName}_${formName}_${timestamp}.pdf`
+      );
       await uploadBytes(fileRef, pdfBlob, { contentType: "application/pdf" });
       const pdfUrl = await getDownloadURL(fileRef);
 
-      await addDoc(collection(firestore, "coursePlans"), {
+      const firestorePayload = {
         formId: activeForm.id,
         formName: activeForm.name,
         session: activeForm.session,
@@ -338,9 +403,35 @@ export default function TeacherDashboard({ user }) {
         pdfUrl,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
-      setAnswers({});
-      setMessage("Plan envoye pour validation. Vous recevrez un retour bientot.");
+      };
+
+      const docRef = await addDoc(
+        collection(firestore, "coursePlans"),
+        firestorePayload
+      );
+
+      // Optimistic UI update so the history reflects the new submission immediately
+      const optimisticPlan = {
+        id: docRef.id,
+        ...firestorePayload,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      setPlans((prev) => [
+        optimisticPlan,
+        ...prev.filter((plan) => plan.id !== docRef.id),
+      ]);
+      setAnswersByForm((prev) => ({
+        ...prev,
+        [selectedFormId]: {},
+      }));
+      setAnalysisErrorsByForm((prev) => ({
+        ...prev,
+        [selectedFormId]: {},
+      }));
+      setMessage(
+        "Plan envoye pour validation. Vous recevrez un retour bientot."
+      );
     } catch (error) {
       console.error("handleSubmitPlan", error);
       setMessage("Impossible de soumettre le plan, reessayez.");
@@ -354,39 +445,68 @@ export default function TeacherDashboard({ user }) {
       <section className="panel">
         <header className="panel-header">
           <div>
-            <p className="panel-label">Formulaire actif</p>
+            <p className="panel-label">Formulaire selectionne</p>
             <h2>{activeForm?.name || "Aucun formulaire publie"}</h2>
             <p className="hint">
-              Session : {activeForm?.session || "Non definie"} - Progression : {progress}%
+              Session : {activeForm?.session || "Non definie"} - Progression :{" "}
+              {progress}%
             </p>
           </div>
-          <button className="primary-button" onClick={handleSubmitPlan} disabled={!activeForm || saving}>
+          {availableForms.length > 0 && (
+            <label className="select-field">
+              <span className="hint">Choisir un formulaire actif</span>
+              <select
+                value={selectedFormId || ""}
+                onChange={(event) =>
+                  setSelectedFormId(event.target.value || null)
+                }
+              >
+                {availableForms.map((form) => (
+                  <option key={form.id} value={form.id}>
+                    {form.name} {form.session ? `(${form.session})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <button
+            className="primary-button"
+            onClick={handleSubmitPlan}
+            disabled={!activeForm || saving}
+          >
             {saving ? "Soumission..." : "Soumettre le plan"}
           </button>
         </header>
 
         {!openAiReady && (
           <div className="hint">
-            Ajoutez <code>VITE_OPENAI_API_KEY</code> dans <code>.env.local</code> pour activer
-            l'analyse ChatGPT. Un mode heuristique est utilise en attendant.
+            Ajoutez <code>VITE_OPENAI_API_KEY</code> dans{" "}
+            <code>.env.local</code> pour activer l'analyse ChatGPT. Un mode
+            heuristique est utilise en attendant.
           </div>
         )}
 
         {!activeForm ? (
-          <p className="hint">Aucun formulaire n'est disponible pour le moment. Revenez plus tard.</p>
+          <p className="hint">
+            Aucun formulaire n'est disponible pour le moment. Revenez plus tard.
+          </p>
         ) : (
           <div className="question-answer-list">
             {activeForm.questions.map((question) => {
-              const entry = answers[question.id] || {};
+              const entry = answersForSelected[question.id] || {};
               return (
                 <article key={question.id} className="answer-card">
                   <div className="answer-card-header">
                     <div>
                       <h4>{question.text}</h4>
-                      {question.rule && <p className="hint">Regle IA : {question.rule}</p>}
+                      {question.rule && (
+                        <p className="hint">Regle IA : {question.rule}</p>
+                      )}
                     </div>
                     {entry.aiStatus && (
-                      <span className={`status-pill ${statusClass(entry.aiStatus)}`}>
+                      <span
+                        className={`status-pill ${statusClass(entry.aiStatus)}`}
+                      >
                         {entry.aiStatus}
                       </span>
                     )}
@@ -395,16 +515,22 @@ export default function TeacherDashboard({ user }) {
                     rows={4}
                     placeholder="Saisissez votre reponse"
                     value={entry.response || ""}
-                    onChange={(event) => handleAnswerChange(question.id, event.target.value)}
+                    onChange={(event) =>
+                      handleAnswerChange(question.id, event.target.value)
+                    }
                   />
                   <div className="panel-actions">
-                    {entry.aiFeedback && <p className="hint">{entry.aiFeedback}</p>}
-                    {entry.aiHighlights?.length > 0 && (
-                      <p className="hint">Points cles : {entry.aiHighlights.join(", ")}</p>
+                    {entry.aiFeedback && (
+                      <p className="hint">{entry.aiFeedback}</p>
                     )}
-                    {analysisErrors[question.id] && (
+                    {entry.aiHighlights?.length > 0 && (
+                      <p className="hint">
+                        Points cles : {entry.aiHighlights.join(", ")}
+                      </p>
+                    )}
+                    {analysisErrorsForSelected[question.id] && (
                       <p className="hint" style={{ color: "#fca5a5" }}>
-                        {analysisErrors[question.id]}
+                        {analysisErrorsForSelected[question.id]}
                       </p>
                     )}
                     <button
@@ -413,7 +539,9 @@ export default function TeacherDashboard({ user }) {
                       onClick={() => handleAnalyzeQuestion(question)}
                       disabled={analyzingId === question.id}
                     >
-                      {analyzingId === question.id ? "Analyse en cours..." : "Analyser la reponse"}
+                      {analyzingId === question.id
+                        ? "Analyse en cours..."
+                        : "Analyser la reponse"}
                     </button>
                   </div>
                 </article>
@@ -432,7 +560,9 @@ export default function TeacherDashboard({ user }) {
           </div>
         </header>
         {plans.length === 0 ? (
-          <p className="hint">Vous n'avez pas encore soumis de plan pour validation.</p>
+          <p className="hint">
+            Vous n'avez pas encore soumis de plan pour validation.
+          </p>
         ) : (
           <div className="table-wrapper">
             <table>
@@ -451,7 +581,11 @@ export default function TeacherDashboard({ user }) {
                     <td>{plan.formName}</td>
                     <td>{plan.session}</td>
                     <td>
-                      <span className={`status-pill ${statusClass(plan.status || "soumis")}`}>
+                      <span
+                        className={`status-pill ${statusClass(
+                          plan.status || "soumis"
+                        )}`}
+                      >
                         {statusLabels[plan.status] || "Soumis"}
                       </span>
                     </td>
@@ -473,7 +607,10 @@ export default function TeacherDashboard({ user }) {
                       </div>
                     </td>
                     <td>
-                      <button className="ghost-button" onClick={() => setSelectedPlan(plan)}>
+                      <button
+                        className="ghost-button"
+                        onClick={() => setSelectedPlan(plan)}
+                      >
                         Voir
                       </button>
                     </td>
@@ -490,38 +627,59 @@ export default function TeacherDashboard({ user }) {
               <div>
                 <p className="panel-label">Plan selectionne</p>
                 <h3>{selectedPlan.formName}</h3>
-                <p className="hint">Statut : {statusLabels[selectedPlan.status] || "Soumis"}</p>
+                <p className="hint">
+                  Statut : {statusLabels[selectedPlan.status] || "Soumis"}
+                </p>
               </div>
-              <button className="ghost-button" onClick={() => setSelectedPlan(null)}>
+              <button
+                className="ghost-button"
+                onClick={() => setSelectedPlan(null)}
+              >
                 Fermer
               </button>
             </header>
             <div className="answer-list">
               {selectedPlan.answers?.map((answer, index) => (
-                <article key={answer.questionId || index} className="answer-card">
+                <article
+                  key={answer.questionId || index}
+                  className="answer-card"
+                >
                   <div className="answer-card-header">
                     <h4>
                       {index + 1}. {answer.prompt}
                     </h4>
-                    <span className={`status-pill ${statusClass(answer.aiStatus || "soumis")}`}>
+                    <span
+                      className={`status-pill ${statusClass(
+                        answer.aiStatus || "soumis"
+                      )}`}
+                    >
                       {answer.aiStatus || "N/A"}
                     </span>
                   </div>
                   <p>{answer.response}</p>
-                  {answer.aiFeedback && <p className="hint">{answer.aiFeedback}</p>}
+                  {answer.aiFeedback && (
+                    <p className="hint">{answer.aiFeedback}</p>
+                  )}
                 </article>
               ))}
             </div>
             <div className="panel-actions">
               {selectedPlan.pdfUrl ? (
-                <a className="ghost-button" href={selectedPlan.pdfUrl} target="_blank" rel="noreferrer">
+                <a
+                  className="ghost-button"
+                  href={selectedPlan.pdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Telecharger le PDF
                 </a>
               ) : (
                 <span className="hint">PDF non disponible</span>
               )}
               {selectedPlan.reviewComment && (
-                <p className="hint">Commentaire : {selectedPlan.reviewComment}</p>
+                <p className="hint">
+                  Commentaire : {selectedPlan.reviewComment}
+                </p>
               )}
             </div>
           </div>

@@ -5,7 +5,7 @@ import GestionFormAdmin from "./GestionFormAdmin.jsx";
 import App from "./App.jsx";
 import Profile from "./Profile.jsx";
 import Connexion from "./Connexion.jsx";
-import Inscription from "./Inscription.jsx";
+import Inscription from "./inscription.jsx";
 import AiSettings from "./components/AiSettings.jsx";
 
 export function Routeur() {

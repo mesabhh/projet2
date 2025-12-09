@@ -57,7 +57,10 @@ export default function AdminDashboard({ user }) {
   });
 
   useEffect(() => {
-    const q = query(collection(firestore, "forms"), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(firestore, "forms"),
+      orderBy("createdAt", "desc")
+    );
     const unsub = onSnapshot(q, (snapshot) => {
       const nextForms = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
@@ -75,7 +78,10 @@ export default function AdminDashboard({ user }) {
   }, [editingFormId]);
 
   useEffect(() => {
-    const q = query(collection(firestore, "coursePlans"), orderBy("createdAt", "desc"));
+    const q = query(
+      collection(firestore, "coursePlans"),
+      orderBy("createdAt", "desc")
+    );
     const unsub = onSnapshot(q, (snapshot) => {
       const nextPlans = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
@@ -99,11 +105,14 @@ export default function AdminDashboard({ user }) {
     return plans.filter((plan) => {
       const teacherMatches =
         !filters.teacher ||
-        plan.teacherEmail?.toLowerCase().includes(filters.teacher.toLowerCase()) ||
+        plan.teacherEmail
+          ?.toLowerCase()
+          .includes(filters.teacher.toLowerCase()) ||
         plan.teacherName?.toLowerCase().includes(filters.teacher.toLowerCase());
       const statusMatches = !filters.status || plan.status === filters.status;
       const sessionMatches =
-        !filters.session || plan.session?.toLowerCase() === filters.session.toLowerCase();
+        !filters.session ||
+        plan.session?.toLowerCase() === filters.session.toLowerCase();
       return teacherMatches && statusMatches && sessionMatches;
     });
   }, [filters, plans]);
@@ -117,7 +126,10 @@ export default function AdminDashboard({ user }) {
   const handleAddQuestion = () => {
     setBuilder((prev) => ({
       ...prev,
-      questions: [...prev.questions, { id: generateQuestionId(), text: "", rule: "" }],
+      questions: [
+        ...prev.questions,
+        { id: generateQuestionId(), text: "", rule: "" },
+      ],
     }));
   };
 
@@ -133,7 +145,9 @@ export default function AdminDashboard({ user }) {
   const handleDeleteQuestion = (questionId) => {
     setBuilder((prev) => ({
       ...prev,
-      questions: prev.questions.filter((question) => question.id !== questionId),
+      questions: prev.questions.filter(
+        (question) => question.id !== questionId
+      ),
     }));
   };
 
@@ -145,7 +159,9 @@ export default function AdminDashboard({ user }) {
 
   const handleSaveForm = async () => {
     if (!builderIsValid) {
-      setBuilderMessage("Veuillez completer le nom, la session et au moins 10 questions.");
+      setBuilderMessage(
+        "Veuillez completer le nom, la session et au moins 10 questions."
+      );
       return;
     }
     setBuilderMessage("");
@@ -209,14 +225,9 @@ export default function AdminDashboard({ user }) {
 
   const handleToggleActive = async (targetForm) => {
     try {
-      await Promise.all(
-        forms.map((form) => {
-          const formRef = doc(firestore, "forms", form.id);
-          return updateDoc(formRef, {
-            isActive: form.id === targetForm.id ? !form.isActive : false,
-          });
-        })
-      );
+      await updateDoc(doc(firestore, "forms", targetForm.id), {
+        isActive: !targetForm.isActive,
+      });
     } catch (error) {
       console.error("handleToggleActive", error);
     }
@@ -257,7 +268,11 @@ export default function AdminDashboard({ user }) {
                 Annuler
               </button>
             )}
-            <button className="primary-button" onClick={handleSaveForm} disabled={!builderIsValid}>
+            <button
+              className="primary-button"
+              onClick={handleSaveForm}
+              disabled={!builderIsValid}
+            >
               {editingFormId ? "Mettre a jour" : "Creer le formulaire"}
             </button>
           </div>
@@ -288,7 +303,9 @@ export default function AdminDashboard({ user }) {
         </div>
 
         <div className="question-list">
-          <div className="panel-label">Questions ({builder.questions.length})</div>
+          <div className="panel-label">
+            Questions ({builder.questions.length})
+          </div>
           {builder.questions.map((question, index) => (
             <div key={question.id} className="question-item">
               <span className="question-index">{index + 1}.</span>
@@ -298,7 +315,11 @@ export default function AdminDashboard({ user }) {
                   placeholder="Texte de la question"
                   value={question.text}
                   onChange={(event) =>
-                    handleQuestionChange(question.id, "text", event.target.value)
+                    handleQuestionChange(
+                      question.id,
+                      "text",
+                      event.target.value
+                    )
                   }
                 />
                 <input
@@ -306,11 +327,18 @@ export default function AdminDashboard({ user }) {
                   placeholder="Regle IA (ex.: mentionner les objectifs du cours)"
                   value={question.rule}
                   onChange={(event) =>
-                    handleQuestionChange(question.id, "rule", event.target.value)
+                    handleQuestionChange(
+                      question.id,
+                      "rule",
+                      event.target.value
+                    )
                   }
                 />
               </div>
-              <button className="ghost-button" onClick={() => handleDeleteQuestion(question.id)}>
+              <button
+                className="ghost-button"
+                onClick={() => handleDeleteQuestion(question.id)}
+              >
                 Retirer
               </button>
             </div>
@@ -350,18 +378,31 @@ export default function AdminDashboard({ user }) {
                     <td>{form.session}</td>
                     <td>{form.questions?.length || 0}</td>
                     <td>
-                      <span className={`status-pill ${form.isActive ? "status-success" : ""}`}>
+                      <span
+                        className={`status-pill ${
+                          form.isActive ? "status-success" : ""
+                        }`}
+                      >
                         {form.isActive ? "Actif" : "Inactif"}
                       </span>
                     </td>
                     <td className="table-actions">
-                      <button className="ghost-button" onClick={() => handleEditForm(form)}>
+                      <button
+                        className="ghost-button"
+                        onClick={() => handleEditForm(form)}
+                      >
                         Modifier
                       </button>
-                      <button className="ghost-button" onClick={() => handleToggleActive(form)}>
+                      <button
+                        className="ghost-button"
+                        onClick={() => handleToggleActive(form)}
+                      >
                         {form.isActive ? "Desactiver" : "Activer"}
                       </button>
-                      <button className="danger-button" onClick={() => handleDeleteForm(form.id)}>
+                      <button
+                        className="danger-button"
+                        onClick={() => handleDeleteForm(form.id)}
+                      >
                         Supprimer
                       </button>
                     </td>
@@ -421,7 +462,9 @@ export default function AdminDashboard({ user }) {
         </div>
 
         {filteredPlans.length === 0 ? (
-          <p className="hint">Aucun plan ne correspond aux filtres selectionnes.</p>
+          <p className="hint">
+            Aucun plan ne correspond aux filtres selectionnes.
+          </p>
         ) : (
           <div className="table-wrapper">
             <table>
@@ -446,12 +489,19 @@ export default function AdminDashboard({ user }) {
                     </td>
                     <td>{plan.session}</td>
                     <td>
-                      <span className={`status-pill ${statusClass(plan.status || "soumis")}`}>
+                      <span
+                        className={`status-pill ${statusClass(
+                          plan.status || "soumis"
+                        )}`}
+                      >
                         {statusLabels[plan.status] || "Soumis"}
                       </span>
                     </td>
                     <td>
-                      <button className="ghost-button" onClick={() => handlePlanSelection(plan)}>
+                      <button
+                        className="ghost-button"
+                        onClick={() => handlePlanSelection(plan)}
+                      >
                         Voir
                       </button>
                     </td>
@@ -472,26 +522,40 @@ export default function AdminDashboard({ user }) {
                   {selectedPlan.teacherName} - {selectedPlan.teacherEmail}
                 </p>
               </div>
-              <button className="ghost-button" onClick={() => setSelectedPlan(null)}>
+              <button
+                className="ghost-button"
+                onClick={() => setSelectedPlan(null)}
+              >
                 Fermer
               </button>
             </header>
 
             <div className="answer-list">
               {selectedPlan.answers?.map((answer, index) => (
-                <article key={answer.questionId || index} className="answer-card">
+                <article
+                  key={answer.questionId || index}
+                  className="answer-card"
+                >
                   <div className="answer-card-header">
                     <h4>
                       {index + 1}. {answer.prompt}
                     </h4>
-                    <span className={`status-pill ${statusClass(answer.aiStatus || "soumis")}`}>
+                    <span
+                      className={`status-pill ${statusClass(
+                        answer.aiStatus || "soumis"
+                      )}`}
+                    >
                       {answer.aiStatus || "N/A"}
                     </span>
                   </div>
                   <p>{answer.response}</p>
-                  {answer.aiFeedback && <p className="hint">Suggestion IA : {answer.aiFeedback}</p>}
+                  {answer.aiFeedback && (
+                    <p className="hint">Suggestion IA : {answer.aiFeedback}</p>
+                  )}
                   {answer.aiHighlights?.length > 0 && (
-                    <p className="hint">Points verifies : {answer.aiHighlights.join(", ")}</p>
+                    <p className="hint">
+                      Points verifies : {answer.aiHighlights.join(", ")}
+                    </p>
                   )}
                   {answer.aiEngine && (
                     <p className="hint">
@@ -515,16 +579,27 @@ export default function AdminDashboard({ user }) {
               </label>
               <div className="panel-actions">
                 {selectedPlan.pdfUrl ? (
-                  <a className="ghost-button" href={selectedPlan.pdfUrl} target="_blank" rel="noreferrer">
+                  <a
+                    className="ghost-button"
+                    href={selectedPlan.pdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Telecharger le PDF
                   </a>
                 ) : (
                   <span className="hint">PDF non disponible</span>
                 )}
-                <button className="secondary-button" onClick={() => handlePlanDecision("corrections")}>
+                <button
+                  className="secondary-button"
+                  onClick={() => handlePlanDecision("corrections")}
+                >
                   Demander des corrections
                 </button>
-                <button className="primary-button" onClick={() => handlePlanDecision("approuve")}>
+                <button
+                  className="primary-button"
+                  onClick={() => handlePlanDecision("approuve")}
+                >
                   Approuver le plan
                 </button>
               </div>
